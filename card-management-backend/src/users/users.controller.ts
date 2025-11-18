@@ -2,7 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Request,
+  Body,
+  Post,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -25,6 +32,19 @@ export class UsersController {
     return {
       accountBalance: user.accountBalance,
       email: user.email,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('add-balance')
+  async addBalance(@Request() req, @Body() body: { amount: number }) {
+    const user = await this.usersService.updateBalance(
+      req.user.userId,
+      body.amount,
+    );
+    return {
+      message: 'Balance added successfully',
+      newBalance: user.accountBalance,
     };
   }
 
