@@ -37,7 +37,7 @@ export class CardsController {
     return this.cardsService.requestPhysicalCard(req.user.userId, requestDto);
   }
 
-  // Get All User Cards
+  // // Get All User Cards
   //   @Get()
   //   findAll(@Request() req) {
   //     return this.cardsService.findAllByUser(req.user.userId);
@@ -46,6 +46,8 @@ export class CardsController {
   @Get()
   async findAll(@Request() req) {
     const cards = await this.cardsService.findAllByUser(req.user.userId);
+
+    console.log(cards);
 
     // Mask sensitive data for listing
     return cards.map((card) => ({

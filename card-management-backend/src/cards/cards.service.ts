@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/require-await */
 import {
   Injectable,
@@ -149,7 +152,9 @@ export class CardsService {
     cardId: string,
     fundDto: FundCardDto,
   ): Promise<Card> {
-    const card = await this.findOne(cardId);
+    // const card = await this.findOne(cardId);
+
+    const card = this.cards.find((c) => c.id === cardId);
 
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
@@ -183,7 +188,9 @@ export class CardsService {
 
   // Freeze Card
   async freezeCard(userId: string, cardId: string): Promise<Card> {
-    const card = await this.findOne(cardId);
+    // const card = await this.findOne(cardId);
+
+    const card = this.cards.find((c) => c.id === cardId);
 
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
@@ -208,7 +215,9 @@ export class CardsService {
 
   // Unfreeze Card
   async unfreezeCard(userId: string, cardId: string): Promise<Card> {
-    const card = await this.findOne(cardId);
+    // const card = await this.findOne(cardId);
+
+    const card = this.cards.find((c) => c.id === cardId);
 
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
@@ -226,7 +235,9 @@ export class CardsService {
 
   // Block Card (for lost/stolen cards)
   async blockCard(userId: string, cardId: string): Promise<Card> {
-    const card = await this.findOne(cardId);
+    // const card = await this.findOne(cardId);
+
+    const card = this.cards.find((c) => c.id === cardId);
 
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
@@ -244,7 +255,9 @@ export class CardsService {
 
   // Delete Card (soft delete for virtual cards)
   async deleteCard(userId: string, cardId: string): Promise<any> {
-    const card = await this.findOne(cardId);
+    // const card = await this.findOne(cardId);
+
+    const card = this.cards.find((c) => c.id === cardId);
 
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
@@ -289,18 +302,31 @@ export class CardsService {
   }
 
   // Get single card
-  async findOne(cardId: string): Promise<Card> {
+  async findOne(cardId: string): Promise<any> {
     const card = this.cards.find((c) => c.id === cardId);
     if (!card) {
       throw new NotFoundException('Card not found');
     }
-    return card;
+    // return card;
+    return {
+      id: card.id,
+      cardName: card.cardName,
+      cardNumber: card.getMaskedCardNumber(), // Full number
+      cvv: card.getMaskedCVV(), // Full CVV
+      expiryDate: card.expiryDate,
+      type: card.type,
+      status: card.status,
+      currency: card.currency,
+      balance: card.balance,
+      createdAt: card.createdAt,
+    };
   }
 
   // Get card details (with full card number for copying)
   async getCardDetails(userId: string, cardId: string): Promise<any> {
-    const card = await this.findOne(cardId);
+    const card = this.cards.find((c) => c.id === cardId);
 
+    console.log(card.userId, userId);
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
     }
