@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/require-await */
+//
+
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   Transaction,
   TransactionType,
@@ -13,9 +16,11 @@ import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class TransactionsService {
-  private transactions: Transaction[] = []; // In-memory storage
-
-  constructor(private usersService: UsersService) {}
+  constructor(
+    @InjectRepository(Transaction)
+    private transactionRepository: Repository<Transaction>,
+    private usersService: UsersService,
+  ) {}
 
   // Create Transaction
   async createTransaction(
@@ -24,7 +29,7 @@ export class TransactionsService {
     balanceBefore: number,
     balanceAfter: number,
   ): Promise<Transaction> {
-    const transaction = new Transaction({
+    const transaction = this.transactionRepository.create({
       userId,
       amount: createDto.amount,
       type: createDto.type,
@@ -37,8 +42,7 @@ export class TransactionsService {
       status: TransactionStatus.COMPLETED,
     });
 
-    this.transactions.push(transaction);
-    return transaction;
+    return await this.transactionRepository.save(transaction);
   }
 
   // Get All User Transactions
@@ -46,56 +50,54 @@ export class TransactionsService {
     userId: string,
     filterDto?: FilterTransactionsDto,
   ): Promise<Transaction[]> {
-    let userTransactions = this.transactions.filter(
-      (txn) => txn.userId === userId,
-    );
+    const queryBuilder = this.transactionRepository
+      .createQueryBuilder('transaction')
+      .where('transaction.userId = :userId', { userId });
 
     // Apply filters
     if (filterDto) {
       if (filterDto.type) {
-        userTransactions = userTransactions.filter(
-          (txn) => txn.type === filterDto.type,
-        );
+        queryBuilder.andWhere('transaction.type = :type', {
+          type: filterDto.type,
+        });
       }
 
       if (filterDto.status) {
-        userTransactions = userTransactions.filter(
-          (txn) => txn.status === filterDto.status,
-        );
+        queryBuilder.andWhere('transaction.status = :status', {
+          status: filterDto.status,
+        });
       }
 
       if (filterDto.cardId) {
-        userTransactions = userTransactions.filter(
-          (txn) => txn.cardId === filterDto.cardId,
-        );
+        queryBuilder.andWhere('transaction.cardId = :cardId', {
+          cardId: filterDto.cardId,
+        });
       }
 
       if (filterDto.startDate) {
-        const startDate = new Date(filterDto.startDate);
-        userTransactions = userTransactions.filter(
-          (txn) => txn.createdAt >= startDate,
-        );
+        queryBuilder.andWhere('transaction.createdAt >= :startDate', {
+          startDate: new Date(filterDto.startDate),
+        });
       }
 
       if (filterDto.endDate) {
-        const endDate = new Date(filterDto.endDate);
-        userTransactions = userTransactions.filter(
-          (txn) => txn.createdAt <= endDate,
-        );
+        queryBuilder.andWhere('transaction.createdAt <= :endDate', {
+          endDate: new Date(filterDto.endDate),
+        });
       }
     }
 
-    // Sort by date descending (newest first)
-    return userTransactions.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-    );
+    // Sort by date descending
+    return await queryBuilder
+      .orderBy('transaction.createdAt', 'DESC')
+      .getMany();
   }
 
   // Get Single Transaction
   async getTransactionById(transactionId: string): Promise<Transaction> {
-    const transaction = this.transactions.find(
-      (txn) => txn.id === transactionId,
-    );
+    const transaction = await this.transactionRepository.findOne({
+      where: { id: transactionId },
+    });
 
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
@@ -109,27 +111,29 @@ export class TransactionsService {
     userId: string,
     cardId: string,
   ): Promise<Transaction[]> {
-    return this.transactions
-      .filter((txn) => txn.userId === userId && txn.cardId === cardId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return await this.transactionRepository.find({
+      where: { userId, cardId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
-  // Get Recent Transactions (Last 10)
+  // Get Recent Transactions
   async getRecentTransactions(
     userId: string,
     limit: number = 10,
   ): Promise<Transaction[]> {
-    return this.transactions
-      .filter((txn) => txn.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, limit);
+    return await this.transactionRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
   }
 
   // Get Transaction Statistics
   async getTransactionStats(userId: string): Promise<any> {
-    const userTransactions = this.transactions.filter(
-      (txn) => txn.userId === userId,
-    );
+    const userTransactions = await this.transactionRepository.find({
+      where: { userId },
+    });
 
     const totalInflow = userTransactions
       .filter(
@@ -164,7 +168,7 @@ export class TransactionsService {
     };
   }
 
-  // Helper: Group by Type
+  // Helpers
   private groupByType(transactions: Transaction[]): any {
     const grouped = {};
     transactions.forEach((txn) => {
@@ -177,7 +181,6 @@ export class TransactionsService {
     return grouped;
   }
 
-  // Helper: Group by Status
   private groupByStatus(transactions: Transaction[]): any {
     const grouped = {};
     transactions.forEach((txn) => {
@@ -189,7 +192,7 @@ export class TransactionsService {
     return grouped;
   }
 
-  // Record Deposit Transaction
+  // Record Deposit
   async recordDeposit(
     userId: string,
     amount: number,
@@ -211,7 +214,7 @@ export class TransactionsService {
     );
   }
 
-  // Record Withdrawal Transaction
+  // Record Withdrawal
   async recordWithdrawal(
     userId: string,
     amount: number,
@@ -233,7 +236,7 @@ export class TransactionsService {
     );
   }
 
-  // Record Card Funding Transaction
+  // Record Card Funding
   async recordCardFunding(
     userId: string,
     cardId: string,
@@ -257,7 +260,7 @@ export class TransactionsService {
     );
   }
 
-  // Record Card Spending Transaction
+  // Record Card Spending
   async recordCardSpending(
     userId: string,
     cardId: string,

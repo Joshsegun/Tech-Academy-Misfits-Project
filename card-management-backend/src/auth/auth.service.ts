@@ -32,12 +32,29 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
+    // 1. Fetch user from the PostgreSQL database
     const user = await this.usersService.findByEmail(loginDto.email);
 
-    if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
+    // 2. 🛑 CRITICAL FIX: Check if the user exists BEFORE trying to access user.password
+    if (!user) {
+      // User not found in DB
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // 3. Now, compare the password using the HASHED password retrieved from the DB
+    console.log('Comparing password for user:', user.email);
+    console.log(loginDto.password, user.password); // For debugging only; remove in production
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      // User found, but password was wrong
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // 4. If everything passes, generate the token
     const payload = { sub: user.id, email: user.email };
     const access_token = this.jwtService.sign(payload);
 

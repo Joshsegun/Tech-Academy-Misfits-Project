@@ -1,20 +1,36 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Exclude } from 'class-transformer';
+
+@Entity('users')
 export class User {
+  @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ unique: true })
   email: string;
+
+  @Column()
   firstName: string;
+
+  @Column()
   lastName: string;
+
+  @Column()
+  @Exclude()
   password: string;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
   accountBalance: number;
+
+  @CreateDateColumn()
   createdAt: Date;
 
-  constructor(partial: Partial<User>) {
-    Object.assign(this, partial);
-    this.id = this.id || this.generateId();
-    this.accountBalance = this.accountBalance || 0;
-    this.createdAt = this.createdAt || new Date();
-  }
-
-  private generateId(): string {
-    return 'user_' + Math.random().toString(36).substr(2, 9);
-  }
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
