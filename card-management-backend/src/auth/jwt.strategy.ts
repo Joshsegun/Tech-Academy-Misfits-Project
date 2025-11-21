@@ -12,15 +12,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'gtco-secret-key-2025', // Change in production
+      secretOrKey: 'gtco-secret-key-2025',
     });
   }
 
   async validate(payload: any) {
     const user = await this.usersService.findById(payload.sub);
+
     if (!user) {
       throw new UnauthorizedException();
     }
-    return { userId: payload.sub, email: payload.email };
+
+    return {
+      userId: payload.sub,  // normalized field
+      email: payload.email,
+    };
   }
 }

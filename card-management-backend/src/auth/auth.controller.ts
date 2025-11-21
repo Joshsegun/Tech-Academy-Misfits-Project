@@ -16,6 +16,7 @@ import { CreateUserDto } from '../users/dto/createUser.dto';
 import { LoginDto } from '../users/dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
@@ -34,11 +35,12 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  async getProfile(@Request() req) {
-    const user = await this.usersService.findById(req.user.userId);
-    const { password, ...result } = user;
-    return result;
-  }
+  @Get('profile')  
+async getProfile(@Request() req) {
+  const user = await this.usersService.findById(req.user.userId);
+  const { password, ...result } = user;
+  return result;
+}
 }
