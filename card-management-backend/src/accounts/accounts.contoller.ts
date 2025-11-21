@@ -13,7 +13,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AddBalanceDto } from './dto/addBalance.dto';
 import { FundAccountDto } from './dto/fundAccount.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('access-token')
 @Controller('accounts')
 @UseGuards(JwtAuthGuard)
 export class AccountsController {

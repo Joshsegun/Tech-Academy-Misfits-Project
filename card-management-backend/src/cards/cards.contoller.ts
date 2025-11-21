@@ -17,7 +17,9 @@ import { CreateVirtualCardDto } from './dto/createVirtualCard.dto';
 import { RequestPhysicalCardDto } from './dto/requestPhysicalCard.dto';
 import { FundCardDto } from './dto/fundCard.dto';
 import { CardSpendingDto } from 'src/transactions/dto/cardSpending.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('access-token')
 @Controller('cards')
 @UseGuards(JwtAuthGuard)
 export class CardsController {

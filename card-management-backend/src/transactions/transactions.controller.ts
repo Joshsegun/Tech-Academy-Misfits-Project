@@ -11,7 +11,9 @@ import {
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FilterTransactionsDto } from './dto/filterTransactions.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('access-token')
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
 export class TransactionsController {
