@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateVirtualCardDto } from './dto/createVirtualCard.dto';
 import { RequestPhysicalCardDto } from './dto/requestPhysicalCard.dto';
 import { FundCardDto } from './dto/fundCard.dto';
+import { CardSpendingDto } from 'src/transactions/dto/cardSpending.dto';
 
 @Controller('cards')
 @UseGuards(JwtAuthGuard)
@@ -85,6 +86,16 @@ export class CardsController {
     @Body() fundDto: FundCardDto,
   ) {
     return this.cardsService.fundCard(req.user.userId, id, fundDto);
+  }
+
+  // Card Spending (Purchase)
+  @Post(':id/spend')
+  spendOnCard(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() spendingDto: CardSpendingDto,
+  ) {
+    return this.cardsService.spendOnCard(req.user.userId, id, spendingDto);
   }
 
   // Freeze Card
