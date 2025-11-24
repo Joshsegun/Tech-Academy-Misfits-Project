@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -37,10 +38,10 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
-  @Get('profile')  
-async getProfile(@Request() req) {
-  const user = await this.usersService.findById(req.user.userId);
-  const { password, ...result } = user;
-  return result;
-}
+  @Get('profile')
+  async getProfile(@Request() req) {
+    const user = await this.usersService.findById(req.user.userId);
+    const { password, ...result } = user;
+    return result;
+  }
 }
