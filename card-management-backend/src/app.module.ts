@@ -11,6 +11,7 @@ import { Card } from './cards/entities/card.entity';
 import { Transaction } from './transactions/entities/transaction.entity';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { Otp } from './otp/entity/otp.entity';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { AppService } from './app.service';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
-        entities: [User, Card, Transaction],
+        entities: [User, Card, Transaction, Otp],
         synchronize: configService.get('NODE_ENV') === 'development',
         logging: true,
       }),
