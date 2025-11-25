@@ -17,7 +17,9 @@ import { CreateUserDto } from '../users/dto/createUser.dto';
 import { LoginDto } from '../users/dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { VerifyOtpDto } from 'src/otp/dto/verify-otp.dto';
+import { SendOtpDto } from 'src/otp/dto/send-otp.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -44,4 +46,19 @@ export class AuthController {
     const { password, ...result } = user;
     return result;
   }
+
+  @Post('send-otp')
+  @ApiBody({ type: SendOtpDto })
+  async sendOtp(@Body() body: SendOtpDto) {
+    return this.authService.sendOtp(body.accountNumber);
+  }
+  
+
+  @Post('verify-otp')
+  @ApiBody({ type: VerifyOtpDto })
+  async verifyOtp(@Body() body: VerifyOtpDto) {
+    return this.authService.verifyOtp(body.otp);
+  }
+  
+
 }
