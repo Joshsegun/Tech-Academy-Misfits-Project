@@ -40,26 +40,6 @@ export class AccountsService {
     };
   }
 
-  // Get Account Summary
-  // async getAccountSummary(userId: string) {
-  //   const user = await this.usersService.findById(userId);
-
-  //   if (!user) {
-  //     throw new NotFoundException('User not found');
-  //   }
-
-  //   return {
-  //     accountNumber: this.generateAccountNumber(userId),
-  //     accountName: `${user.firstName} ${user.lastName}`,
-  //     accountBalance: user.accountBalance,
-  //     availableBalance: user.accountBalance,
-  //     currency: 'NGN',
-  //     email: user.email,
-  //     accountType: 'Savings',
-  //     status: 'Active',
-  //   };
-  // }
-
   // 🚨 UPDATED: Get Account Summary (Now includes card balances)
   async getAccountSummary(userId: string) {
     const user = await this.usersService.findById(userId);
