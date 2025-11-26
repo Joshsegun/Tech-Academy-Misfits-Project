@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -52,13 +53,10 @@ export class AuthController {
   async sendOtp(@Body() body: SendOtpDto) {
     return this.authService.sendOtp(body.accountNumber);
   }
-  
 
   @Post('verify-otp')
   @ApiBody({ type: VerifyOtpDto })
   async verifyOtp(@Body() body: VerifyOtpDto) {
     return this.authService.verifyOtp(body.otp);
   }
-  
-
 }

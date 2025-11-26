@@ -1,4 +1,12 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -12,8 +20,8 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private otpService: OtpService, 
-    private mailService: MailService, 
+    private otpService: OtpService,
+    private mailService: MailService,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
@@ -76,54 +84,53 @@ export class AuthService {
     };
   }
 
-
   async sendOtp(accountNumber: string) {
     const user = await this.usersService.findByAccountNumber(accountNumber);
-  
+
     if (!user) {
       throw new NotFoundException('Account not found');
     }
-  
+
     const otp = await this.otpService.createOtp(accountNumber);
-  
+
     await this.mailService.sendOtp(user.email, otp);
-  
+
     return { message: 'OTP sent successfully' };
   }
 
   async verifyOtp(otp: string) {
     const otpRecord = await this.otpService.findByOtp(otp);
-  
+
     if (!otpRecord) {
       throw new UnauthorizedException('Invalid OTP');
     }
-  
+
     // Expiry check
     if (otpRecord.expiresAt < new Date()) {
       throw new UnauthorizedException('OTP has expired');
     }
-  
+
     if (otpRecord.isUsed) {
       throw new UnauthorizedException('OTP already used');
     }
-  
+
     // Mark OTP as used
     otpRecord.isUsed = true;
     await this.otpService.save(otpRecord);
-  
+
     // Fetch the user via account number stored in OTP record
     const user = await this.usersService.findByAccountNumber(
       otpRecord.accountNumber,
     );
-  
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
-  
+
     // Token payload
     const payload = { sub: user.id, email: user.email };
     const access_token = this.jwtService.sign(payload);
-  
+
     return {
       message: 'OTP verified successfully',
       access_token,
@@ -137,6 +144,4 @@ export class AuthService {
       },
     };
   }
-  
-  
 }

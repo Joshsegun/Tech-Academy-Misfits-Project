@@ -1,12 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
   private transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,               // smtp.gmail.com
-    port: Number(process.env.SMTP_PORT),       // 587
-    secure: false,                              // false for STARTTLS
+    host: process.env.SMTP_HOST, // smtp.gmail.com
+    port: Number(process.env.SMTP_PORT), // 587
+    secure: false,
+    // false for STARTTLS
+    // secure: true,
     auth: {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD,
