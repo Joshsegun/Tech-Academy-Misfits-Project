@@ -4,6 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
@@ -24,52 +26,77 @@ export class CardsService {
     private transactionsService: TransactionsService,
   ) {}
 
-  // Create Virtual Card
-  async createVirtualCard(
-    userId: string,
-    createDto: CreateVirtualCardDto,
-  ): Promise<Card> {
-    const user = await this.usersService.findById(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    console.log('📥 Received DTO:', createDto);
-    console.log('📥 cardName:', createDto.cardName);
-    console.log('📥 currency:', createDto.currency);
-
-    // Determine card name
-    let cardName: string;
-    if (createDto.cardName && createDto.cardName.trim() !== '') {
-      cardName = createDto.cardName.trim();
-      console.log('✅ Using provided card name:', cardName);
-    } else {
-      const userCardsCount = await this.cardRepository.count({
-        where: { userId },
-      });
-      cardName = `Virtual Card ${userCardsCount + 1}`;
-      console.log('⚠️ Using default card name:', cardName);
-    }
-
-    const currency = createDto.currency || Currency.NGN;
-    console.log('💰 Final currency:', currency);
-
-    const card = this.cardRepository.create({
-      userId,
-      cardNumber: Card.generateCardNumber(),
-      cvv: Card.generateCVV(),
-      expiryDate: Card.generateExpiryDate(),
-      cardName: cardName,
-      type: CardType.VIRTUAL,
-      status: CardStatus.ACTIVE,
-      currency: currency,
-      balance: 0,
-    });
-
-    const savedCard = await this.cardRepository.save(card);
-    console.log('✅ Card created:', savedCard);
-    return savedCard;
+// Create Virtual Card with dynamic balance update
+async createVirtualCard(
+  userId: string,
+  createDto: CreateVirtualCardDto,
+): Promise<{ card: Card; newBalance: number }> {
+  const user = await this.usersService.findById(userId);
+  if (!user) {
+    throw new NotFoundException('User not found');
   }
+
+  const CARD_FEE = 2000;
+
+  const currentBalance = Number(user.accountBalance);
+  if (currentBalance < CARD_FEE) {
+    throw new BadRequestException(
+      'Insufficient balance. You need at least ₦2000 to create a virtual card.',
+    );
+  }
+
+  const updatedUser = await this.usersService.updateBalance(
+    userId,
+    -CARD_FEE,
+  );
+
+  const newBalance = Number(updatedUser.accountBalance);
+
+  await this.transactionsService.recordWithdrawal(
+    userId,
+    CARD_FEE,
+    'Virtual card creation fee',
+  );
+
+  let cardName: string;
+  if (createDto.cardName?.trim()) {
+    cardName = createDto.cardName.trim();
+  } else {
+    const userCardsCount = await this.cardRepository.count({ where: { userId } });
+    cardName = `Virtual Card ${userCardsCount + 1}`;
+  }
+
+  const currency = createDto.currency || Currency.NGN;
+
+  const card = this.cardRepository.create({
+    userId,
+    cardNumber: Card.generateCardNumber(),
+    cvv: Card.generateCVV(),
+    expiryDate: Card.generateExpiryDate(),
+    cardName,
+    type: CardType.VIRTUAL,
+    status: CardStatus.ACTIVE,
+    currency,
+    balance: newBalance,
+  });
+
+  try {
+    const savedCard = await this.cardRepository.save(card);
+
+    return {
+      card: savedCard,
+      newBalance,
+    };
+  } catch (error) {
+    if (error.code === '23505') {
+      throw new ConflictException('Card name already exists.');
+    }
+
+    throw new InternalServerErrorException('Failed to create card.');
+  }
+}
+
+
 
   // Request Physical Card
   async requestPhysicalCard(
@@ -111,42 +138,6 @@ export class CardsService {
       estimatedDelivery: '5-7 business days',
     };
   }
-
-  // Fund Card
-  // async fundCard(
-  //   userId: string,
-  //   cardId: string,
-  //   fundDto: FundCardDto,
-  // ): Promise<Card> {
-  //   const card = await this.cardRepository.findOne({ where: { id: cardId } });
-
-  //   if (!card) {
-  //     throw new NotFoundException('Card not found');
-  //   }
-
-  //   if (card.userId !== userId) {
-  //     throw new ForbiddenException('You do not have access to this card');
-  //   }
-
-  //   if (card.status !== CardStatus.ACTIVE) {
-  //     throw new BadRequestException('Card must be active to fund');
-  //   }
-
-  //   const user = await this.usersService.findById(userId);
-  //   if (user.accountBalance < fundDto.amount) {
-  //     throw new BadRequestException('Insufficient account balance');
-  //   }
-
-  //   if (fundDto.pin !== '1234') {
-  //     throw new BadRequestException('Invalid transaction PIN');
-  //   }
-
-  //   await this.usersService.updateBalance(userId, -fundDto.amount);
-
-  //   card.balance = Number(card.balance) + Number(fundDto.amount);
-
-  //   return await this.cardRepository.save(card);
-  // }
 
   async fundCard(
     userId: string,

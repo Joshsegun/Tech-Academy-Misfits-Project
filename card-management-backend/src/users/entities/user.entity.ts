@@ -29,7 +29,7 @@ export class User {
   @Column({ unique: true })
   accountNumber: string;  
 
-  @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 15, scale: 2, default: 1000000 })
   accountBalance: number;
 
   @CreateDateColumn()
@@ -37,11 +37,4 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  // @BeforeInsert()
-  // generateAccountNumber() {
-  //   const prefix = '300258'; // fixed GTBank-style prefix
-  //   const randomFour = Math.floor(1000 + Math.random() * 9000); // ensures 4 digits
-  //   this.accountNumber = `${prefix}${randomFour}`;
-  // }
 }

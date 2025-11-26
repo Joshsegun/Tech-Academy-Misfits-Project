@@ -35,7 +35,7 @@ export class UsersService {
     const user = this.userRepository.create({
       ...createUserDto,
       password: hashedPassword,
-      accountBalance: 0,
+      accountBalance: 1000000,
       accountNumber,
     });
   

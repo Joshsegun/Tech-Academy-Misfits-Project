@@ -105,9 +105,6 @@ export enum CardStatus {
 
 export enum Currency {
   NGN = 'NGN',
-  USD = 'USD',
-  EUR = 'EUR',
-  GBP = 'GBP',
 }
 
 @Entity('cards')
@@ -127,7 +124,7 @@ export class Card {
   @Column()
   expiryDate: string;
 
-  @Column()
+  @Column({ unique: true })
   cardName: string;
 
   @Column({ type: 'enum', enum: CardType, default: CardType.VIRTUAL })
