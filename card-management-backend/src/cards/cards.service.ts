@@ -26,77 +26,77 @@ export class CardsService {
     private transactionsService: TransactionsService,
   ) {}
 
-// Create Virtual Card with dynamic balance update
-async createVirtualCard(
-  userId: string,
-  createDto: CreateVirtualCardDto,
-): Promise<{ card: Card; newBalance: number }> {
-  const user = await this.usersService.findById(userId);
-  if (!user) {
-    throw new NotFoundException('User not found');
-  }
-
-  const CARD_FEE = 2000;
-
-  const currentBalance = Number(user.accountBalance);
-  if (currentBalance < CARD_FEE) {
-    throw new BadRequestException(
-      'Insufficient balance. You need at least ₦2000 to create a virtual card.',
-    );
-  }
-
-  const updatedUser = await this.usersService.updateBalance(
-    userId,
-    -CARD_FEE,
-  );
-
-  const newBalance = Number(updatedUser.accountBalance);
-
-  await this.transactionsService.recordWithdrawal(
-    userId,
-    CARD_FEE,
-    'Virtual card creation fee',
-  );
-
-  let cardName: string;
-  if (createDto.cardName?.trim()) {
-    cardName = createDto.cardName.trim();
-  } else {
-    const userCardsCount = await this.cardRepository.count({ where: { userId } });
-    cardName = `Virtual Card ${userCardsCount + 1}`;
-  }
-
-  const currency = createDto.currency || Currency.NGN;
-
-  const card = this.cardRepository.create({
-    userId,
-    cardNumber: Card.generateCardNumber(),
-    cvv: Card.generateCVV(),
-    expiryDate: Card.generateExpiryDate(),
-    cardName,
-    type: CardType.VIRTUAL,
-    status: CardStatus.ACTIVE,
-    currency,
-    balance: newBalance,
-  });
-
-  try {
-    const savedCard = await this.cardRepository.save(card);
-
-    return {
-      card: savedCard,
-      newBalance,
-    };
-  } catch (error) {
-    if (error.code === '23505') {
-      throw new ConflictException('Card name already exists.');
+  // Create Virtual Card with dynamic balance update
+  async createVirtualCard(
+    userId: string,
+    createDto: CreateVirtualCardDto,
+  ): Promise<{ card: Card; newBalance: number }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    throw new InternalServerErrorException('Failed to create card.');
+    const CARD_FEE = 2000;
+
+    const currentBalance = Number(user.accountBalance);
+    if (currentBalance < CARD_FEE) {
+      throw new BadRequestException(
+        'Insufficient balance. You need at least ₦2000 to create a virtual card.',
+      );
+    }
+
+    const updatedUser = await this.usersService.updateBalance(
+      userId,
+      -CARD_FEE,
+    );
+
+    const newBalance = Number(updatedUser.accountBalance);
+
+    await this.transactionsService.recordWithdrawal(
+      userId,
+      CARD_FEE,
+      'Virtual card creation fee',
+    );
+
+    let cardName: string;
+    if (createDto.cardName?.trim()) {
+      cardName = createDto.cardName.trim();
+    } else {
+      const userCardsCount = await this.cardRepository.count({
+        where: { userId },
+      });
+      cardName = `Virtual Card ${userCardsCount + 1}`;
+    }
+
+    const currency = createDto.currency || Currency.NGN;
+
+    const card = this.cardRepository.create({
+      userId,
+      cardNumber: Card.generateCardNumber(),
+      cvv: Card.generateCVV(),
+      expiryDate: Card.generateExpiryDate(),
+      cardName,
+      type: CardType.VIRTUAL,
+      status: CardStatus.ACTIVE,
+      currency,
+      balance: 0,
+    });
+
+    try {
+      const savedCard = await this.cardRepository.save(card);
+
+      return {
+        card: savedCard,
+        newBalance,
+      };
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Card name already exists.');
+      }
+
+      throw new InternalServerErrorException('Failed to create card.');
+    }
   }
-}
-
-
 
   // Request Physical Card
   async requestPhysicalCard(
