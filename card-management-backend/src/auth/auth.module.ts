@@ -21,9 +21,7 @@ import { OtpModule } from 'src/otp/otp.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy,  UsersService,
-    OtpService,
-    MailService, ], // ← AuthService must be here!
+  providers: [AuthService, JwtStrategy, UsersService, OtpService, MailService], // ← AuthService must be here!
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -27,7 +27,7 @@ export class User {
   password: string;
 
   @Column({ unique: true })
-  accountNumber: string;  
+  accountNumber: string;
 
   @Column({ type: 'decimal', precision: 15, scale: 2, default: 1000000 })
   accountBalance: number;
