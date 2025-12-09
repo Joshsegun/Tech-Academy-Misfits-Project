@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  BeforeInsert,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 
@@ -31,6 +30,12 @@ export class User {
 
   @Column({ type: 'decimal', precision: 15, scale: 2, default: 1000000 })
   accountBalance: number;
+
+  @Column({ unique: true })
+  nin: string;
+
+  @Column({ unique: true })
+  bvn: string;
 
   @CreateDateColumn()
   createdAt: Date;

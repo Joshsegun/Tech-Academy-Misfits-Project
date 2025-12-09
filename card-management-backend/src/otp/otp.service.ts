@@ -60,4 +60,27 @@ export class OtpService {
     return await this.otpRepository.save(otpEntity);
   }
   
+  async storeOtp(accountNumber: string, otp: string) {
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
+  
+    // Create or overwrite OTP record
+    const record = await this.otpRepository.findOne({
+      where: { accountNumber },
+    });
+  
+    if (record) {
+      record.otp = otp;
+      record.expiresAt = expiresAt;
+      record.isUsed = false;
+      return this.otpRepository.save(record);
+    }
+  
+    return this.otpRepository.save({
+      accountNumber,
+      otp,
+      expiresAt,
+      isUsed: false,
+    });
+  }
+  
 }
