@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-//
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -45,6 +44,32 @@ export class TransactionsService {
     return await this.transactionRepository.save(transaction);
   }
 
+  // Normalize "type" filter: inflow/outflow → concrete enum set
+  private resolveTypeFilterSet(type?: string): TransactionType[] | undefined {
+    if (!type) return undefined;
+    const t = type.trim().toLowerCase();
+
+    const inflowSet: TransactionType[] = [
+      TransactionType.DEPOSIT,
+      TransactionType.INFLOW,
+      // Add other backend types that should count as inflow here if any
+    ];
+
+    const outflowSet: TransactionType[] = [
+      TransactionType.WITHDRAW,
+      TransactionType.OUTFLOW,
+      TransactionType.CARD_FUNDING,
+      TransactionType.CARD_SPENDING,
+      TransactionType.SEND_MONEY,
+      TransactionType.TRANSFER,
+      // Add other outflow types here if needed
+    ];
+
+    if (t === 'inflow') return inflowSet;
+    if (t === 'outflow') return outflowSet;
+    return undefined; // Unknown → no type filter applied
+  }
+
   // Get All User Transactions
   async getUserTransactions(
     userId: string,
@@ -56,9 +81,11 @@ export class TransactionsService {
 
     // Apply filters
     if (filterDto) {
-      if (filterDto.type) {
-        queryBuilder.andWhere('transaction.type = :type', {
-          type: filterDto.type,
+      // Type filter: group into IN(...) for inflow/outflow
+      const typeSet = this.resolveTypeFilterSet(filterDto.type);
+      if (typeSet && typeSet.length > 0) {
+        queryBuilder.andWhere('transaction.type IN (:...typeSet)', {
+          typeSet,
         });
       }
 
@@ -149,7 +176,9 @@ export class TransactionsService {
           txn.type === TransactionType.WITHDRAW ||
           txn.type === TransactionType.OUTFLOW ||
           txn.type === TransactionType.CARD_FUNDING ||
-          txn.type === TransactionType.CARD_SPENDING,
+          txn.type === TransactionType.CARD_SPENDING ||
+          txn.type === TransactionType.SEND_MONEY ||
+          txn.type === TransactionType.TRANSFER,
       )
       .reduce((sum, txn) => sum + Number(txn.amount), 0);
 
@@ -170,7 +199,7 @@ export class TransactionsService {
 
   // Helpers
   private groupByType(transactions: Transaction[]): any {
-    const grouped = {};
+    const grouped: Record<string, { count: number; total: number }> = {};
     transactions.forEach((txn) => {
       if (!grouped[txn.type]) {
         grouped[txn.type] = { count: 0, total: 0 };
@@ -182,7 +211,7 @@ export class TransactionsService {
   }
 
   private groupByStatus(transactions: Transaction[]): any {
-    const grouped = {};
+    const grouped: Record<string, number> = {};
     transactions.forEach((txn) => {
       if (!grouped[txn.status]) {
         grouped[txn.status] = 0;
@@ -192,7 +221,7 @@ export class TransactionsService {
     return grouped;
   }
 
-  // Record Deposit
+  // Record Deposit → inflow
   async recordDeposit(
     userId: string,
     amount: number,
@@ -214,7 +243,7 @@ export class TransactionsService {
     );
   }
 
-  // Record Withdrawal
+  // Record Withdrawal → outflow
   async recordWithdrawal(
     userId: string,
     amount: number,
@@ -236,7 +265,7 @@ export class TransactionsService {
     );
   }
 
-  // Record Card Funding
+  // Record Card Funding → outflow
   async recordCardFunding(
     userId: string,
     cardId: string,
@@ -260,7 +289,31 @@ export class TransactionsService {
     );
   }
 
-  // Record Card Spending
+  // Record Send Money → outflow
+  async recordSendMoney(
+    userId: string,
+    cardId: string,
+    amount: number,
+    bankName: string,
+    accountNumber: string,
+    recipientName: string,
+    cardBalance: number,
+  ): Promise<Transaction> {
+    return this.createTransaction(
+      userId,
+      {
+        amount,
+        type: TransactionType.SEND_MONEY,
+        description: `Sent ₦${amount.toLocaleString()} to ${recipientName} (${bankName} - ${accountNumber})`,
+        cardId,
+        reference: `SEND-${Date.now()}`,
+      },
+      cardBalance + amount,
+      cardBalance,
+    );
+  }
+
+  // Record Card Spending → outflow
   async recordCardSpending(
     userId: string,
     cardId: string,

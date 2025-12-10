@@ -18,6 +18,7 @@ import { CreateVirtualCardDto } from './dto/createVirtualCard.dto';
 import { RequestPhysicalCardDto } from './dto/requestPhysicalCard.dto';
 import { FundCardDto } from './dto/fundCard.dto';
 import { CardSpendingDto } from 'src/transactions/dto/cardSpending.dto';
+import { SendMoneyDto } from './dto/sendMoney.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiBearerAuth('access-token')
@@ -117,6 +118,12 @@ export class CardsController {
   @Patch(':id/block')
   blockCard(@Request() req, @Param('id') id: string) {
     return this.cardsService.blockCard(req.user.userId, id);
+  }
+
+  // Send Money
+  @Post('send-money')
+  sendMoney(@Request() req, @Body() sendMoneyDto: SendMoneyDto) {
+    return this.cardsService.sendMoney(req.user.userId, sendMoneyDto);
   }
 
   // Delete Card

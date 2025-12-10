@@ -1,32 +1,30 @@
+// src/transactions/dto/filterTransactions.dto.ts
 import { IsOptional, IsEnum, IsString, IsDateString } from 'class-validator';
-import {
-  TransactionType,
-  TransactionStatus,
-} from '../entities/transaction.entity';
+import { TransactionStatus } from '../entities/transaction.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class FilterTransactionsDto {
-  @ApiProperty()
+  @ApiProperty({ required: false, description: 'Use "inflow" or "outflow"' })
   @IsOptional()
-  @IsEnum(TransactionType)
-  type?: TransactionType;
+  @IsString()
+  type?: string; // Accepts "inflow" | "outflow" (case-insensitive)
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsEnum(TransactionStatus)
   status?: TransactionStatus;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   cardId?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsDateString()
   startDate?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsDateString()
   endDate?: string;

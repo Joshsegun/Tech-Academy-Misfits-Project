@@ -71,6 +71,7 @@ export enum TransactionType {
   INFLOW = 'Inflow',
   OUTFLOW = 'Outflow',
   TRANSFER = 'Transfer',
+  SEND_MONEY = 'SEND_MONEY',
 }
 
 export enum TransactionStatus {
