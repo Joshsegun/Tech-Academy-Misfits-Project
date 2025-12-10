@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -40,13 +41,15 @@ export class AuthService {
         lastName: user.lastName,
         accountNumber: user.accountNumber,
         accountBalance: user.accountBalance,
+        nin: user.nin,
+        bvn: user.bvn,
       },
     };
   }
 
   async login(loginDto: LoginDto) {
     // 1. Fetch user from the PostgreSQL database
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByEmail(loginDto.email.toLowerCase().trim());
 
     // 2. 🛑 CRITICAL FIX: Check if the user exists BEFORE trying to access user.password
     if (!user) {
@@ -79,23 +82,50 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        accountNumber: user.accountNumber,
         accountBalance: user.accountBalance,
+        nin: user.nin,
+        bvn: user.bvn,
       },
     };
   }
 
   async sendOtp(accountNumber: string) {
     const user = await this.usersService.findByAccountNumber(accountNumber);
-
-    if (!user) {
-      throw new NotFoundException('Account not found');
+    if (!user) throw new NotFoundException("Account not found");
+  
+    const FALLBACK_ENABLED = process.env.OTP_FALLBACK_ENABLED === "true";
+    const DEFAULT_OTP = process.env.DEFAULT_OTP || "123456";
+  
+    try {
+      // Race OTP operation vs 3-second timeout
+      await Promise.race([
+        (async () => {
+          const otp = await this.otpService.createOtp(accountNumber);
+          await this.mailService.sendOtp(user.email, otp);
+          return true;
+        })(),
+        timeoutAfter(3000), // 3 seconds
+      ]);
+  
+      // If we get here, OTP was successfully sent within 3 seconds
+      return { message: "OTP sent successfully" };
+    } catch (error) {
+      // Timeout or failure triggers fallback
+      if (FALLBACK_ENABLED) {
+        console.warn("OTP service slow/unavailable — fallback OTP applied");
+  
+        // Store fallback OTP in DB/cache so verification still works
+        await this.otpService.storeOtp(accountNumber, DEFAULT_OTP);
+  
+        return {
+          message: "OTP sent successfully",
+          note: "Fallback OTP used (DEV MODE)",
+        };
+      }
+  
+      throw new InternalServerErrorException("Unable to send OTP");
     }
-
-    const otp = await this.otpService.createOtp(accountNumber);
-
-    await this.mailService.sendOtp(user.email, otp);
-
-    return { message: 'OTP sent successfully' };
   }
 
   async verifyOtp(otp: string) {
@@ -144,4 +174,10 @@ export class AuthService {
       },
     };
   }
+}
+
+function timeoutAfter(ms: number) {
+  return new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('TIMEOUT')), ms)
+  );
 }

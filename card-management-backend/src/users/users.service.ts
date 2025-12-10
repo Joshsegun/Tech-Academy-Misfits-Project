@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/createUser.dto';
@@ -18,32 +18,37 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    // Check if email exists
-    const existingUser = await this.userRepository.findOne({
+    const existing = await this.userRepository.findOne({
       where: { email: createUserDto.email },
     });
-
-    if (existingUser) {
+  
+    if (existing) {
       throw new ConflictException('User with this email already exists');
     }
-
-    // Generate unique account number
-    const accountNumber = await this.generateUniqueAccountNumber();
-
+  
+    const [accountNumber, nin, bvn] = await Promise.all([
+      this.generateAccountNumber(),
+      this.generateUnique('nin', 11),
+      this.generateUnique('bvn', 11),
+    ]);
+  
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
+  
     const user = this.userRepository.create({
       ...createUserDto,
       password: hashedPassword,
       accountBalance: 1000000,
       accountNumber,
+      nin,
+      bvn,
     });
-
+  
     return await this.userRepository.save(user);
   }
+  
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return await this.userRepository.findOne({ where: { email } });
+    return await this.userRepository.findOne({ where: { email: ILike(email) } });
   }
 
   async findById(id: string): Promise<User | undefined> {
@@ -68,26 +73,24 @@ export class UsersService {
     return await this.userRepository.save(user);
   }
 
-  private async generateUniqueAccountNumber(): Promise<string> {
-    const prefix = '300258';
-
-    let accountNumber: string;
+  private async generateUnique(field: keyof User, length: number): Promise<string> {
+    let value: string;
     let exists = true;
-
+  
     while (exists) {
-      const randomFour = Math.floor(1000 + Math.random() * 9000); // Always 4 digits
-      accountNumber = `${prefix}${randomFour}`;
-
-      // Check if account number already exists
-      const existing = await this.userRepository.findOne({
-        where: { accountNumber },
-      });
-
-      exists = !!existing;
+      value = Array.from({ length }, () => Math.floor(Math.random() * 10)).join('');
+  
+      exists = !!(await this.userRepository.findOne({ where: { [field]: value } }));
     }
-
-    return accountNumber;
+  
+    return value;
   }
+
+  private async generateAccountNumber(): Promise<string> {
+    const prefix = '300258';
+    const randomPart = await this.generateUnique('accountNumber', 4);
+    return prefix + randomPart;
+  } 
 
   async findByAccountNumber(accountNumber: string): Promise<User | undefined> {
     return await this.userRepository.findOne({
