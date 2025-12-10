@@ -130,37 +130,34 @@ export class AuthService {
 
   async verifyOtp(otp: string) {
     const otpRecord = await this.otpService.findByOtp(otp);
-
+  
     if (!otpRecord) {
       throw new UnauthorizedException('Invalid OTP');
     }
-
-    // Expiry check
-    if (otpRecord.expiresAt < new Date()) {
+  
+    // Expiry check (fixed)
+    if (new Date(otpRecord.expiresAt).getTime() < Date.now()) {
       throw new UnauthorizedException('OTP has expired');
     }
-
+  
     if (otpRecord.isUsed) {
       throw new UnauthorizedException('OTP already used');
     }
-
-    // Mark OTP as used
+  
     otpRecord.isUsed = true;
     await this.otpService.save(otpRecord);
-
-    // Fetch the user via account number stored in OTP record
+  
     const user = await this.usersService.findByAccountNumber(
       otpRecord.accountNumber,
     );
-
+  
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
-    // Token payload
+  
     const payload = { sub: user.id, email: user.email };
     const access_token = this.jwtService.sign(payload);
-
+  
     return {
       message: 'OTP verified successfully',
       access_token,
@@ -174,7 +171,7 @@ export class AuthService {
       },
     };
   }
-}
+}  
 
 function timeoutAfter(ms: number) {
   return new Promise((_, reject) =>
