@@ -193,44 +193,45 @@ export class CardsService {
     spendingDto: CardSpendingDto,
   ): Promise<any> {
     const card = await this.cardRepository.findOne({ where: { id: cardId } });
-
+  
     if (!card) {
       throw new NotFoundException('Card not found');
     }
-
+  
     if (card.userId !== userId) {
       throw new ForbiddenException('You do not have access to this card');
     }
-
+  
     if (card.status !== CardStatus.ACTIVE) {
       throw new BadRequestException('Card must be active to make purchases');
     }
-
-    // Check if card has sufficient balance
+  
+    // Check balance
     if (card.balance < spendingDto.amount) {
       throw new BadRequestException('Insufficient card balance');
     }
-
-    // Store balance before spending
+  
     const balanceBefore = Number(card.balance);
-
-    // Deduct from card balance
+  
+    // Deduct spending
     card.balance = Number(card.balance) - Number(spendingDto.amount);
-
+  
     const updatedCard = await this.cardRepository.save(card);
-
-    // ✅ Record transaction
+  
+    // Log transaction with merchant
     await this.transactionsService.recordCardSpending(
       userId,
       cardId,
       spendingDto.amount,
-      spendingDto.merchant,
+      spendingDto.merchant,      // using merchant again
       balanceBefore,
+      // spendingDto.billReference, // optional metadata
     );
-
+  
     return {
       message: 'Purchase successful',
       merchant: spendingDto.merchant,
+      billReference: spendingDto.billReference,
       amount: spendingDto.amount,
       cardName: card.cardName,
       previousBalance: balanceBefore,
@@ -238,6 +239,58 @@ export class CardsService {
       cardNumber: card.getMaskedCardNumber(),
     };
   }
+  
+  // async spendOnCard(
+  //   userId: string,
+  //   cardId: string,
+  //   spendingDto: CardSpendingDto,
+  // ): Promise<any> {
+  //   const card = await this.cardRepository.findOne({ where: { id: cardId } });
+
+  //   if (!card) {
+  //     throw new NotFoundException('Card not found');
+  //   }
+
+  //   if (card.userId !== userId) {
+  //     throw new ForbiddenException('You do not have access to this card');
+  //   }
+
+  //   if (card.status !== CardStatus.ACTIVE) {
+  //     throw new BadRequestException('Card must be active to make purchases');
+  //   }
+
+  //   // Check if card has sufficient balance
+  //   if (card.balance < spendingDto.amount) {
+  //     throw new BadRequestException('Insufficient card balance');
+  //   }
+
+  //   // Store balance before spending
+  //   const balanceBefore = Number(card.balance);
+
+  //   // Deduct from card balance
+  //   card.balance = Number(card.balance) - Number(spendingDto.amount);
+
+  //   const updatedCard = await this.cardRepository.save(card);
+
+  //   // ✅ Record transaction
+  //   await this.transactionsService.recordCardSpending(
+  //     userId,
+  //     cardId,
+  //     spendingDto.amount,
+  //     spendingDto.merchant,
+  //     balanceBefore,
+  //   );
+
+  //   return {
+  //     message: 'Purchase successful',
+  //     merchant: spendingDto.merchant,
+  //     amount: spendingDto.amount,
+  //     cardName: card.cardName,
+  //     previousBalance: balanceBefore,
+  //     newBalance: card.balance,
+  //     cardNumber: card.getMaskedCardNumber(),
+  //   };
+  // }
 
   // Freeze Card
   async freezeCard(userId: string, cardId: string): Promise<Card> {
